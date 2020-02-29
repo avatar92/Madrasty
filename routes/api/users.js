@@ -11,7 +11,7 @@ const keys = require("../../config/keys");
 
 const validateRegisterInput = require("../../validator/register");
 const validateLoginInput = require("../../validator/login");
-
+const validateSchoolInput = require("../../validator/school");
 // GET /api/user/test
 // desc Test user route
 // access public
@@ -66,9 +66,12 @@ router.post(
   (req, res) => {
     //checking for validation
     const { errors, isValid } = validateRegisterInput(req.body);
-
+    const { errors: err, isValid: valid } = validateSchoolInput(req.body);
     if (!isValid) {
       return res.status(400).json(errors);
+    }
+    if (!valid) {
+      return res.status(400).json(err);
     }
     if (req.user.role !== "superAdmin") {
       errors.unauthorized = "you are not authorized";
@@ -160,9 +163,11 @@ router.post("/login", (req, res) => {
       .catch(e => res.status(400).json(e));
   });
 });
+
 // GET /api/user/allusersandschools
 // desc get all user and school
 // access private
+
 router.get(
   "/allusersandschools",
   passport.authenticate("jwt", { session: false }),
@@ -197,13 +202,88 @@ router.get(
   }
 );
 
-// PUT /api/users/adminandschool
-// desc update the admin and the user
+// POST /api/users/:admin_id/:school_id
+// desc update the admin and the school
 // access private
 
+router.post(
+  "/:admin_id/:school_id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    //checking for req validation
+    const { errors, isValid } = validateRegisterInput(req.body);
+    const { errors: err, isValid: valid } = validateSchoolInput(req.body);
+    if (!isValid) {
+      return res.status(400).json(errors);
+    }
+    if (!valid) {
+      return res.status(400).json(err);
+    }
+    //cheking for the role of user
+    if (req.user.role !== "superAdmin") {
+      errors.role = "not authorized, you are not super admin";
+      return res.status(401).json(errors);
+    }
+    Users.findById(req.params.admin_id)
+      .then(user => {
+        if (!user) {
+          errors.username = "not found";
+          return res.status(404).son(errors);
+        } else {
+          user.username = req.body.username;
+          user.avatar = req.body.avatar;
+          user.password = req.body.password;
+          bcrypt.genSalt(10, (err, salt) => {
+            bcrypt.hash(user.password, salt, (err, hash) => {
+              if (err) throw err;
+              user.password = hash;
+              user
+                .save()
+                .then(user => console.log(user))
+                .catch(e => console.log(e));
+            });
+          });
+          return user;
+        }
+      })
+      .then(user => {
+        Schools.findById(req.params.school_id).then(school => {
+          school.name = req.body.name;
+          school.admin = user._id;
+          school.save().then(school => res.status(200).json({ school, user }));
+        });
+      });
+  }
+);
 
 // DELETE /api/users/:admin_id
-// DELETE update the admin and the user
+// des delete the admin and his school
 // access private
+
+router.delete(
+  "/:admin_id/:school_id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    let errors;
+    //cheking for role
+    if (req.user.role !== "superAdmin") {
+      errors.role = "not authorized, you are not super admin";
+      return res.status(401).json(errors);
+    }
+    Users.findByIdAndDelete(req.params.admin_id)
+      .then(user => {
+        if (!user) {
+          errors.username = "not found";
+          return res.status(404).son(errors);
+        }
+        return user;
+      })
+      .then(user => {
+        Schools.findByIdAndDelete(req.params.school_id).then(school => {
+          res.status(200).json({ success: true, school, user });
+        });
+      });
+  }
+);
 
 module.exports = router;

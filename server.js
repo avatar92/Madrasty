@@ -12,6 +12,9 @@ const schools = require("./routes/api/schools");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+// config PORT
+const port = process.env.PORT || 5000;
+
 //passport middleware
 
 const mongouRI = require("./config/keys").mongoURI;
@@ -38,4 +41,4 @@ require("./config/passport")(passport);
 app.use("/api/users", users);
 app.use("/api/schools", schools);
 
-app.listen(3000, () => console.log("app is up and running on port 3000"));
+app.listen(port, () => console.log(`app is up and running on port ${port}`));

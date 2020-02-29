@@ -8,6 +8,7 @@ module.exports = function validateRegisterInput(data) {
   data.username = !isEmpty(data.username) ? data.username : "";
   data.password = !isEmpty(data.password) ? data.password : "";
   data.role = !isEmpty(data.role) ? data.role : "";
+  
 
   //validation for username
   if (!validator.isLength(data.username, { min: 2, max: 30 })) {
